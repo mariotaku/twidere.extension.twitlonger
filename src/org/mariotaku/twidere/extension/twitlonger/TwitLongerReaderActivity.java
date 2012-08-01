@@ -10,6 +10,7 @@ import org.mariotaku.twidere.model.ParcelableStatus;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.Html;
@@ -26,18 +27,20 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 	private TextView mPreview;
 	private ImageButton mActionButton;
 	private ProgressBar mProgress;
-	private String mResult;
+	private String mResult, mUser;
 	private ParcelableStatus mStatus;
 	private TwitLongerReaderTask mTwitLongerPostTask;
-	private static final Pattern PATTERN_TWITLONGER = Pattern.compile("(tl\\.gd\\/([\\w\\d]+))",
+	private static final Pattern PATTERN_TWITLONGER = Pattern.compile("((tl\\.gd|www.twitlonger.com\\/show)\\/([\\w\\d]+))",
 			Pattern.CASE_INSENSITIVE);
-	private static final int GROUP_TWITLONGER_ID = 2;
+	private static final int GROUP_TWITLONGER_ID = 3;
 
 	@Override
 	public void onClick(View view) {
 		switch (view.getId()) {
 			case R.id.action: {
+				
 				if (mResult == null) {
+					if (mStatus == null) return;
 					if (mTwitLongerPostTask != null) {
 						mTwitLongerPostTask.cancel(true);
 					}
@@ -47,9 +50,10 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 						mTwitLongerPostTask.execute();
 					}
 				} else {
+					if (mUser == null || mResult == null) return;
 					final Intent intent = new Intent(Intent.ACTION_SEND);
 					intent.setType("text/plain");
-					intent.putExtra(Intent.EXTRA_TEXT, "@" + mStatus.screen_name + ": " + mResult);
+					intent.putExtra(Intent.EXTRA_TEXT, "@" + mUser + ": " + mResult);
 					startActivity(Intent.createChooser(intent, getString(R.string.share)));
 				}
 				break;
@@ -61,24 +65,51 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 	protected void onCreate(Bundle savedInstanceState) {
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		super.onCreate(savedInstanceState);
+		final Intent intent = getIntent();
+		final Uri data = intent.getData();
+		final String action = intent.getAction(); 
 		setContentView(R.layout.main);
 		mPreview = (TextView) findViewById(R.id.text);
 		mActionButton = (ImageButton) findViewById(R.id.action);
 		mProgress = (ProgressBar) findViewById(R.id.progress);
-		mStatus = Twidere.getStatusFromIntent(getIntent());
-		if (mStatus == null || mStatus.text_html == null) {
-			finish();
-			return;
+		mResult = savedInstanceState != null ? savedInstanceState.getString(Twidere.INTENT_KEY_TEXT) : null;
+		mUser = savedInstanceState != null ? savedInstanceState.getString(Twidere.INTENT_KEY_USER) : null;
+		if (mResult == null || mUser == null) {
+			if (Twidere.INTENT_ACTION_EXTENSION_OPEN_STATUS.equals(action)) {
+				mStatus = Twidere.getStatusFromIntent(getIntent());
+				if (mStatus == null || mStatus.text_html == null) {
+					finish();
+					return;
+				}
+				mUser = mStatus.screen_name;
+				mPreview.setText(Html.fromHtml(mStatus.text_plain));
+				final Matcher m = PATTERN_TWITLONGER.matcher(mStatus.text_html);
+				mActionButton.setEnabled(m.find());
+			} else if (Intent.ACTION_VIEW.equals(action) && data != null) {
+				mPreview.setText(data.toString());
+				final Matcher m = PATTERN_TWITLONGER.matcher(data.toString());
+				if (m.find()) {
+					if (mTwitLongerPostTask != null) {
+						mTwitLongerPostTask.cancel(true);
+					}
+					mTwitLongerPostTask = new TwitLongerReaderTask(m.group(GROUP_TWITLONGER_ID));
+					mTwitLongerPostTask.execute();
+				} else {
+					finish();
+					return;
+				}
+			}
+		} else {
+			mPreview.setText(mResult);
 		}
-		mResult = savedInstanceState != null ? savedInstanceState.getString(Intent.EXTRA_TEXT) : null;
-		mPreview.setText(mResult != null ? mResult : Html.fromHtml(mStatus.text_plain));
-		final Matcher m = PATTERN_TWITLONGER.matcher(mStatus.text_html);
-		mActionButton.setEnabled(m.find());
+		
+		
 	}
 
 	@Override
 	protected void onSaveInstanceState(Bundle outState) {
-		outState.putString(Intent.EXTRA_TEXT, mResult);
+		outState.putString(Twidere.INTENT_KEY_TEXT, mResult);
+		outState.putString(Twidere.INTENT_KEY_USER, mUser);
 		super.onSaveInstanceState(outState);
 	}
 
@@ -108,6 +139,9 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 					: R.drawable.ic_menu_send);
 			if (result instanceof TwitLongerResponse) {
 				mResult = ((TwitLongerResponse) result).content;
+				if (mStatus == null) {
+					mUser = ((TwitLongerResponse) result).user;
+				}
 				mPreview.setText(mResult);
 			} else if (result instanceof TwitLongerException) {
 				Toast.makeText(TwitLongerReaderActivity.this,
