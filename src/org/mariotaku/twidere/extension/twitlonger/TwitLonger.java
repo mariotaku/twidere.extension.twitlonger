@@ -1,5 +1,7 @@
 package org.mariotaku.twidere.extension.twitlonger;
 
+import android.net.Uri;
+
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -146,12 +148,12 @@ public class TwitLonger {
 	 * @throws Exception
 	 */
 	public TwitLongerResponse post(String status, String user_name, long in_reply_to_status_id,
-			String in_reply_to_screen_name) throws TwitLongerException {
+								   String in_reply_to_screen_name) throws TwitLongerException {
 		final ArrayList<NameValuePair> args = new ArrayList<NameValuePair>(2);
 		args.add(new BasicNameValuePair("application", app_name));
 		args.add(new BasicNameValuePair("api_key", api_key));
 		args.add(new BasicNameValuePair("username", user_name));
-		args.add(new BasicNameValuePair("message", status));
+		args.add(new BasicNameValuePair("message", Uri.encode(status)));
 		if (in_reply_to_status_id > 0) {
 			args.add(new BasicNameValuePair("in_reply", Long.toString(in_reply_to_status_id)));
 			if (in_reply_to_screen_name != null && in_reply_to_screen_name.trim().length() != 0) {
