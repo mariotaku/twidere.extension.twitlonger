@@ -1,9 +1,9 @@
 package org.mariotaku.twidere.extension.twitlonger;
 
-import android.net.Uri;
-
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 
 import org.apache.http.HttpResponse;
@@ -153,7 +153,7 @@ public class TwitLonger {
 		args.add(new BasicNameValuePair("application", app_name));
 		args.add(new BasicNameValuePair("api_key", api_key));
 		args.add(new BasicNameValuePair("username", user_name));
-		args.add(new BasicNameValuePair("message", Uri.encode(status)));
+		args.add(new BasicNameValuePair("message", encodeToParam(status)));
 		if (in_reply_to_status_id > 0) {
 			args.add(new BasicNameValuePair("in_reply", Long.toString(in_reply_to_status_id)));
 			if (in_reply_to_screen_name != null && in_reply_to_screen_name.trim().length() != 0) {
@@ -304,6 +304,44 @@ public class TwitLonger {
 			this.short_link = short_link;
 			this.user = user;
 		}
+	}
+	
+	/**
+	 * @param value string to be encoded
+	 * @return encoded string
+	 * @see <a href="http://wiki.oauth.net/TestCases">OAuth / TestCases</a>
+	 * @see <a
+	 *      href="http://groups.google.com/group/oauth/browse_thread/thread/a8398d0521f4ae3d/9d79b698ab217df2?hl=en&lnk=gst&q=space+encoding#9d79b698ab217df2">Space
+	 *      encoding - OAuth | Google Groups</a>
+	 * @see <a href="http://tools.ietf.org/html/rfc3986#section-2.1">RFC 3986 -
+	 *      Uniform Resource Identifier (URI): Generic Syntax - 2.1.
+	 *      Percent-Encoding</a>
+	 */
+	private static String encodeToParam(String value) {
+		String encoded = null;
+		try {
+			encoded = URLEncoder.encode(value, "UTF-8");
+		} catch (final UnsupportedEncodingException ignore) {
+		}
+		final StringBuilder builder = new StringBuilder();
+		char focus;
+		for (int i = 0; i < encoded.length(); i++) {
+			focus = encoded.charAt(i);
+			if (focus == '*') {
+				builder.append("%2A");
+			} else if (focus == '+') {
+				builder.append("%20");
+			} else if (focus == '%' && i + 1 < encoded.length() && encoded.charAt(i + 1) == '7'
+					&& encoded.charAt(i + 2) == 'E') {
+				builder.append('~');
+				i += 2;
+			} else if (focus == '\n') {
+				builder.append("%0A");
+			} else {
+				builder.append(focus);
+			}
+		}
+		return builder.toString();
 	}
 
 }
