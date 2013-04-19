@@ -1,6 +1,8 @@
 package org.mariotaku.twidere.extension.twitlonger;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -14,6 +16,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -149,11 +152,11 @@ public class TwitLonger {
 	 */
 	public TwitLongerResponse post(String status, String user_name, long in_reply_to_status_id,
 								   String in_reply_to_screen_name) throws TwitLongerException {
-		final ArrayList<NameValuePair> args = new ArrayList<NameValuePair>(2);
+		final ArrayList<NameValuePair> args = new ArrayList<NameValuePair>();
 		args.add(new BasicNameValuePair("application", app_name));
 		args.add(new BasicNameValuePair("api_key", api_key));
 		args.add(new BasicNameValuePair("username", user_name));
-		args.add(new BasicNameValuePair("message", encodeToParam(status)));
+		args.add(new BasicNameValuePair("message", status));
 		if (in_reply_to_status_id > 0) {
 			args.add(new BasicNameValuePair("in_reply", Long.toString(in_reply_to_status_id)));
 			if (in_reply_to_screen_name != null && in_reply_to_screen_name.trim().length() != 0) {
@@ -163,10 +166,9 @@ public class TwitLonger {
 		try {
 			final HttpClient httpclient = new DefaultHttpClient();
 			final HttpPost httppost = new HttpPost(TWITLONGER_API_POST);
-			httppost.setEntity(new UrlEncodedFormEntity(args));
+			httppost.setEntity(new UrlEncodedFormEntity(args, HTTP.UTF_8));
 			final HttpResponse response = httpclient.execute(httppost);
-			final String response_string = EntityUtils.toString(response.getEntity(), "UTF-8");
-			return parseTwitLongerResponse(response_string);
+			return parseTwitLongerResponse(response.getEntity().getContent());
 		} catch (final IOException e) {
 			throw new TwitLongerException(e);
 		}
@@ -184,20 +186,19 @@ public class TwitLonger {
 			final HttpClient httpclient = new DefaultHttpClient();
 			final HttpGet httpget = new HttpGet(TWITLONGER_API_READ + id);
 			final HttpResponse response = httpclient.execute(httpget);
-			final String responseStr = EntityUtils.toString(response.getEntity(), "UTF-8");
-			return parseTwitLongerResponse(responseStr);
+			return parseTwitLongerResponse(response.getEntity().getContent());
 		} catch (final IOException e) {
 			throw new TwitLongerException(e);
 		}
 	}
 
-	private TwitLongerResponse parseTwitLongerResponse(String response) throws TwitLongerException {
+	private TwitLongerResponse parseTwitLongerResponse(InputStream response) throws TwitLongerException {
 		try {
 			final XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
 			factory.setNamespaceAware(true);
 
 			final XmlPullParser parser = factory.newPullParser();
-			parser.setInput(new StringReader(response));
+			parser.setInput(new InputStreamReader(response));
 
 			int eventType = parser.getEventType();
 			String tagName;
@@ -304,44 +305,6 @@ public class TwitLonger {
 			this.short_link = short_link;
 			this.user = user;
 		}
-	}
-	
-	/**
-	 * @param value string to be encoded
-	 * @return encoded string
-	 * @see <a href="http://wiki.oauth.net/TestCases">OAuth / TestCases</a>
-	 * @see <a
-	 *      href="http://groups.google.com/group/oauth/browse_thread/thread/a8398d0521f4ae3d/9d79b698ab217df2?hl=en&lnk=gst&q=space+encoding#9d79b698ab217df2">Space
-	 *      encoding - OAuth | Google Groups</a>
-	 * @see <a href="http://tools.ietf.org/html/rfc3986#section-2.1">RFC 3986 -
-	 *      Uniform Resource Identifier (URI): Generic Syntax - 2.1.
-	 *      Percent-Encoding</a>
-	 */
-	private static String encodeToParam(String value) {
-		String encoded = null;
-		try {
-			encoded = URLEncoder.encode(value, "UTF-8");
-		} catch (final UnsupportedEncodingException ignore) {
-		}
-		final StringBuilder builder = new StringBuilder();
-		char focus;
-		for (int i = 0; i < encoded.length(); i++) {
-			focus = encoded.charAt(i);
-			if (focus == '*') {
-				builder.append("%2A");
-			} else if (focus == '+') {
-				builder.append("%20");
-			} else if (focus == '%' && i + 1 < encoded.length() && encoded.charAt(i + 1) == '7'
-					&& encoded.charAt(i + 2) == 'E') {
-				builder.append('~');
-				i += 2;
-			} else if (focus == '\n') {
-				builder.append("%0A");
-			} else {
-				builder.append(focus);
-			}
-		}
-		return builder.toString();
 	}
 
 }
