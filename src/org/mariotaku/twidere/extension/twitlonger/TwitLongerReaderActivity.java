@@ -4,6 +4,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.mariotaku.twidere.Twidere;
+import org.mariotaku.twidere.extension.twitlonger.BDTranslate.BDTranslateException;
+import org.mariotaku.twidere.extension.twitlonger.BDTranslate.TranslateResponse;
 import org.mariotaku.twidere.extension.twitlonger.TwitLonger.TwitLongerException;
 import org.mariotaku.twidere.extension.twitlonger.TwitLonger.TwitLongerResponse;
 import org.mariotaku.twidere.model.ParcelableStatus;
@@ -30,9 +32,14 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 	private String mResult, mUser;
 	private ParcelableStatus mStatus;
 	private TwitLongerReaderTask mTwitLongerPostTask;
+	private BDTranslateTask translateTask;
 	private static final Pattern PATTERN_TWITLONGER = Pattern.compile("((tl\\.gd|www.twitlonger.com\\/show)\\/([\\w\\d]+))",
 			Pattern.CASE_INSENSITIVE);
 	private static final int GROUP_TWITLONGER_ID = 3;
+	private boolean isTranslated = false;
+	private boolean isOrignal = true;
+	private String ORIGINAL_STRING = "";
+	private String TRANSLATED_STRING = "";
 
 	@Override
 	public void onClick(View view) {
@@ -55,6 +62,30 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 					intent.setType("text/plain");
 					intent.putExtra(Intent.EXTRA_TEXT, "@" + mUser + ": " + mResult);
 					startActivity(Intent.createChooser(intent, getString(R.string.share)));
+				}
+				break;
+			}
+			case R.id.translate:{
+				if (mPreview.getText() != null) {
+						if (translateTask != null) {
+							translateTask.cancel(true);
+						}else {
+							if (!isTranslated) {
+								translateTask = new BDTranslateTask(ORIGINAL_STRING);
+								translateTask.execute();
+							}else {
+								if (isOrignal) {
+									mPreview.setText(TRANSLATED_STRING);
+									isOrignal = false;
+								}else {
+									mPreview.setText(ORIGINAL_STRING);
+									isOrignal = true;
+								}
+							}
+						}
+				}else {
+					Toast.makeText(getApplicationContext(), "没有推文内容...", Toast.LENGTH_SHORT).show();
+					return;
 				}
 				break;
 			}
@@ -83,10 +114,12 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 				}
 				mUser = mStatus.screen_name;
 				mPreview.setText(Html.fromHtml(mStatus.text_plain));
+				ORIGINAL_STRING = mPreview.getText().toString();
 				final Matcher m = PATTERN_TWITLONGER.matcher(mStatus.text_html);
 				mActionButton.setEnabled(m.find());
 			} else if (Intent.ACTION_VIEW.equals(action) && data != null) {
 				mPreview.setText(data.toString());
+				ORIGINAL_STRING = data.toString();
 				final Matcher m = PATTERN_TWITLONGER.matcher(data.toString());
 				if (m.find()) {
 					if (mTwitLongerPostTask != null) {
@@ -143,6 +176,8 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 					mUser = ((TwitLongerResponse) result).user;
 				}
 				mPreview.setText(mResult);
+				ORIGINAL_STRING = mResult;
+				isTranslated = false;
 			} else if (result instanceof TwitLongerException) {
 				Toast.makeText(TwitLongerReaderActivity.this,
 						getString(R.string.error_message, ((TwitLongerException) result).getMessage()),
@@ -160,5 +195,49 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 			super.onPreExecute();
 		}
 
+	}
+	
+	public final class BDTranslateTask extends AsyncTask<Void, Void, Object> {
+
+		private final String srcContent;
+
+		public BDTranslateTask(String srcContent) {
+			this.srcContent = srcContent;
+		}
+
+		@Override
+		protected Object doInBackground(Void... args) {
+			final BDTranslate translate = new BDTranslate();
+			try {
+				return translate.postTranslate(srcContent);
+			} catch (Exception e) {
+				// TODO: handle exception
+				return e;
+			}
+		}
+
+		@Override
+		protected void onPostExecute(Object result) {
+			if (result instanceof TranslateResponse ) {
+				TRANSLATED_STRING = ((TranslateResponse ) result).translateResult;
+				mPreview.setText(TRANSLATED_STRING);
+				isTranslated = true;
+				isOrignal = false;
+			} else if (result instanceof BDTranslateException) {
+				Toast.makeText(TwitLongerReaderActivity.this,
+						getString(R.string.error_message, ((BDTranslateException) result).getMessage()),
+						Toast.LENGTH_LONG).show();
+			} else {
+				Toast.makeText(TwitLongerReaderActivity.this, R.string.error_unknown_error, Toast.LENGTH_LONG).show();
+			}
+			translateTask = null;
+			super.onPostExecute(result);
+		}
+
+		@Override
+		protected void onPreExecute() {
+			Toast.makeText(getApplicationContext(), "准备获取翻译结果", Toast.LENGTH_LONG).show();
+			super.onPreExecute();
+		}
 	}
 }
