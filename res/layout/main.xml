@@ -20,6 +20,14 @@
 			android:text="@string/title"
 			android:textAppearance="?android:attr/textAppearanceLarge"/>
 
+		<ImageButton 
+			    android:id="@+id/translate"
+			    android:layout_width="56dp"
+			    android:layout_height="match_parent"
+			    android:onClick="onClick"
+			    android:background="@drawable/list_selector_holo_dark"
+			    android:src="@drawable/ic_translate"/>
+		
 		<FrameLayout
 			android:id="@+id/action_progress_layout"
 			android:layout_width="56dp"
