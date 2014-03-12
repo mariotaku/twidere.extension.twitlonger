@@ -27,7 +27,7 @@ public class TwitLongerPostActivity extends Activity implements Constants, OnCli
 	private TwitLongerPostTask mTwitLongerPostTask;
 
 	@Override
-	public void onClick(View view) {
+	public void onClick(final View view) {
 		switch (view.getId()) {
 			case R.id.action: {
 				if (mResult == null) {
@@ -45,7 +45,7 @@ public class TwitLongerPostActivity extends Activity implements Constants, OnCli
 	}
 
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
+	protected void onCreate(final Bundle savedInstanceState) {
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
@@ -62,7 +62,7 @@ public class TwitLongerPostActivity extends Activity implements Constants, OnCli
 	}
 
 	@Override
-	protected void onSaveInstanceState(Bundle outState) {
+	protected void onSaveInstanceState(final Bundle outState) {
 		outState.putString(Intent.EXTRA_TEXT, mResult);
 		super.onSaveInstanceState(outState);
 	}
@@ -70,18 +70,18 @@ public class TwitLongerPostActivity extends Activity implements Constants, OnCli
 	public final class TwitLongerPostTask extends AsyncTask<Void, Void, Object> {
 
 		@Override
-		protected Object doInBackground(Void... args) {
+		protected Object doInBackground(final Void... args) {
 			final TwitLonger tl = new TwitLonger(TWITLONGER_APP_NAME, TWITLONGER_API_KEY);
 			try {
-				return tl
-						.post(mStatus.text, mStatus.user_name, mStatus.in_reply_to_id, mStatus.in_reply_to_screen_name);
+				return tl.post(mStatus.text, mStatus.screen_name, mStatus.in_reply_to_id,
+						mStatus.in_reply_to_screen_name);
 			} catch (final TwitLongerException e) {
 				return e;
 			}
 		}
 
 		@Override
-		protected void onPostExecute(Object result) {
+		protected void onPostExecute(final Object result) {
 			mProgress.setVisibility(View.GONE);
 			mActionButton.setVisibility(View.VISIBLE);
 			mActionButton.setImageResource(result instanceof TwitLongerResponse ? R.drawable.ic_menu_mark

@@ -30,21 +30,21 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 	private String mResult, mUser;
 	private ParcelableStatus mStatus;
 	private TwitLongerReaderTask mTwitLongerPostTask;
-	private static final Pattern PATTERN_TWITLONGER = Pattern.compile("((tl\\.gd|www.twitlonger.com\\/show)\\/([\\w\\d]+))",
-			Pattern.CASE_INSENSITIVE);
+	private static final Pattern PATTERN_TWITLONGER = Pattern.compile(
+			"((tl\\.gd|www.twitlonger.com\\/show)\\/([\\w\\d]+))", Pattern.CASE_INSENSITIVE);
 	private static final int GROUP_TWITLONGER_ID = 3;
 
 	@Override
-	public void onClick(View view) {
+	public void onClick(final View view) {
 		switch (view.getId()) {
 			case R.id.action: {
-				
+
 				if (mResult == null) {
 					if (mStatus == null) return;
 					if (mTwitLongerPostTask != null) {
 						mTwitLongerPostTask.cancel(true);
 					}
-					final Matcher m = PATTERN_TWITLONGER.matcher(mStatus.text);
+					final Matcher m = PATTERN_TWITLONGER.matcher(mStatus.text_html);
 					if (m.find()) {
 						mTwitLongerPostTask = new TwitLongerReaderTask(m.group(GROUP_TWITLONGER_ID));
 						mTwitLongerPostTask.execute();
@@ -62,18 +62,18 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 	}
 
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
+	protected void onCreate(final Bundle savedInstanceState) {
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		super.onCreate(savedInstanceState);
 		final Intent intent = getIntent();
 		final Uri data = intent.getData();
-		final String action = intent.getAction(); 
+		final String action = intent.getAction();
 		setContentView(R.layout.main);
 		mPreview = (TextView) findViewById(R.id.text);
 		mActionButton = (ImageButton) findViewById(R.id.action);
 		mProgress = (ProgressBar) findViewById(R.id.progress);
-		mResult = savedInstanceState != null ? savedInstanceState.getString(Twidere.INTENT_KEY_TEXT) : null;
-		mUser = savedInstanceState != null ? savedInstanceState.getString(Twidere.INTENT_KEY_USER) : null;
+		mResult = savedInstanceState != null ? savedInstanceState.getString(Twidere.EXTRA_TEXT) : null;
+		mUser = savedInstanceState != null ? savedInstanceState.getString(Twidere.EXTRA_USER) : null;
 		if (mResult == null || mUser == null) {
 			if (Twidere.INTENT_ACTION_EXTENSION_OPEN_STATUS.equals(action)) {
 				mStatus = Twidere.getStatusFromIntent(getIntent());
@@ -81,8 +81,8 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 					finish();
 					return;
 				}
-				mUser = mStatus.screen_name;
-				mPreview.setText(Html.fromHtml(mStatus.text_plain));
+				mUser = mStatus.user_screen_name;
+				mPreview.setText(Html.fromHtml(mStatus.text_html));
 				final Matcher m = PATTERN_TWITLONGER.matcher(mStatus.text_html);
 				mActionButton.setEnabled(m.find());
 			} else if (Intent.ACTION_VIEW.equals(action) && data != null) {
@@ -102,14 +102,13 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 		} else {
 			mPreview.setText(mResult);
 		}
-		
-		
+
 	}
 
 	@Override
-	protected void onSaveInstanceState(Bundle outState) {
-		outState.putString(Twidere.INTENT_KEY_TEXT, mResult);
-		outState.putString(Twidere.INTENT_KEY_USER, mUser);
+	protected void onSaveInstanceState(final Bundle outState) {
+		outState.putString(Twidere.EXTRA_TEXT, mResult);
+		outState.putString(Twidere.EXTRA_USER, mUser);
 		super.onSaveInstanceState(outState);
 	}
 
@@ -117,12 +116,12 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 
 		private final String id;
 
-		public TwitLongerReaderTask(String id) {
+		public TwitLongerReaderTask(final String id) {
 			this.id = id;
 		}
 
 		@Override
-		protected Object doInBackground(Void... args) {
+		protected Object doInBackground(final Void... args) {
 			final TwitLonger tl = new TwitLonger(TWITLONGER_APP_NAME, TWITLONGER_API_KEY);
 			try {
 				return tl.readPost(id);
@@ -132,7 +131,7 @@ public class TwitLongerReaderActivity extends Activity implements Constants, OnC
 		}
 
 		@Override
-		protected void onPostExecute(Object result) {
+		protected void onPostExecute(final Object result) {
 			mProgress.setVisibility(View.GONE);
 			mActionButton.setVisibility(View.VISIBLE);
 			mActionButton.setImageResource(result instanceof TwitLongerResponse ? R.drawable.ic_menu_share

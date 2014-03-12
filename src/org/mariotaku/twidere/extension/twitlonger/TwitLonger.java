@@ -1,6 +1,8 @@
 package org.mariotaku.twidere.extension.twitlonger;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.util.ArrayList;
 
@@ -12,6 +14,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -161,10 +164,9 @@ public class TwitLonger {
 		try {
 			final HttpClient httpclient = new DefaultHttpClient();
 			final HttpPost httppost = new HttpPost(TWITLONGER_API_POST);
-			httppost.setEntity(new UrlEncodedFormEntity(args, "UTF-8"));
+			httppost.setEntity(new UrlEncodedFormEntity(args, HTTP.UTF_8));
 			final HttpResponse response = httpclient.execute(httppost);
-			final String response_string = EntityUtils.toString(response.getEntity(), "UTF-8");
-			return parseTwitLongerResponse(response_string);
+			return parseTwitLongerResponse(response.getEntity().getContent());
 		} catch (final IOException e) {
 			throw new TwitLongerException(e);
 		}
@@ -182,20 +184,19 @@ public class TwitLonger {
 			final HttpClient httpclient = new DefaultHttpClient();
 			final HttpGet httpget = new HttpGet(TWITLONGER_API_READ + id);
 			final HttpResponse response = httpclient.execute(httpget);
-			final String responseStr = EntityUtils.toString(response.getEntity(), "UTF-8");
-			return parseTwitLongerResponse(responseStr);
+			return parseTwitLongerResponse(response.getEntity().getContent());
 		} catch (final IOException e) {
 			throw new TwitLongerException(e);
 		}
 	}
 
-	private TwitLongerResponse parseTwitLongerResponse(String response) throws TwitLongerException {
+	private TwitLongerResponse parseTwitLongerResponse(InputStream response) throws TwitLongerException {
 		try {
 			final XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
 			factory.setNamespaceAware(true);
 
 			final XmlPullParser parser = factory.newPullParser();
-			parser.setInput(new StringReader(response));
+			parser.setInput(new InputStreamReader(response));
 
 			int eventType = parser.getEventType();
 			String tagName;

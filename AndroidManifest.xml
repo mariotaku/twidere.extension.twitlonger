@@ -1,11 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	package="org.mariotaku.twidere.extension.twitlonger"
-	android:versionCode="3"
-	android:versionName="1.2">
+	android:versionCode="5"
+	android:versionName="1.4">
 
 	<uses-sdk
 		android:minSdkVersion="4"
-		android:targetSdkVersion="17"/>
+		android:targetSdkVersion="19"/>
 
 	<uses-permission android:name="android.permission.INTERNET"/>
 
@@ -73,6 +73,15 @@
 		<service android:name=".TwitLongerService">
 			<intent-filter>
 				<action android:name="org.mariotaku.twidere.EXTENSION_SHORTEN_TWEET"/>
+
+				<category android:name="android.intent.category.DEFAULT"/>
+			</intent-filter>
+		</service>
+		<service
+			android:name=".TwitLongerService2"
+			android:permission="org.mariotaku.twidere.permission.SHORTEN_STATUS">
+			<intent-filter>
+				<action android:name="org.mariotaku.twidere.EXTENSION_SHORTEN_STATUS"/>
 
 				<category android:name="android.intent.category.DEFAULT"/>
 			</intent-filter>
